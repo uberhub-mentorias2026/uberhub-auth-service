@@ -1,0 +1,13 @@
+package br.edu.iftm.uberhub_mentorias_auth_service.exception;
+
+public enum AuthErrorCode {
+    VALIDATION_ERROR,
+    MALFORMED_REQUEST,
+    INVALID_FIREBASE_TOKEN,
+    INVALID_REFRESH_TOKEN,
+    ACCOUNT_INACTIVE,
+    ACCOUNT_ALREADY_EXISTS,
+    REGISTRATION_REQUIRED,
+    DEPENDENCY_UNAVAILABLE,
+    INTERNAL_ERROR
+}
