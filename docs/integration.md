@@ -54,3 +54,11 @@ O SDK obtém credenciais por `GoogleCredentials.getApplicationDefault()`. Não f
 - O adaptador usa `@ConditionalOnBean(FirebaseAuth.class)` em um componente descoberto por varredura. A presença do adaptador com Firebase habilitado deve ser verificada em teste de contexto específico, pois condições dependem da ordem de registro.
 - O teste de contexto existente usa mocks e Firebase desabilitado. Os testes originais do Arthur instanciam o adaptador com Mockito; não comprovam credenciais, conexão real ou inicialização com Firebase habilitado.
 - Não foi adicionado teste com credenciais reais nem alterada a implementação para resolver esses pontos nesta etapa.
+
+## Endpoints entregues nesta etapa
+
+- `POST /auth/register`: recebe `idToken`, verifica a identidade e solicita cadastro único pelo Firebase UID; retorna 201 com `userId`. Cadastro repetido retorna 409. Não atribui permissões nem emite tokens.
+
+DTOs, AuthController, AuthService e AuthExceptionHandler coordenam estes contratos. As integrações de usuários, JWT e recuperação continuam sob responsabilidade dos respectivos integrantes. O serviço recebe as quatro interfaces compartilhadas no construtor; mocks existem somente nos testes.
+
+Cadastro aceita identidade Google ou e-mail/senha validada pelo Firebase, sem receber senha nem atribuir ADMIN. O contrato OpenAPI está em auth-api.yaml. Testes HTTP isolados e Mockito não validam a cadeia real de segurança nem conexão real com Firebase.
