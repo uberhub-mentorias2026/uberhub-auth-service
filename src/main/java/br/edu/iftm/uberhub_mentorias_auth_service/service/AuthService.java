@@ -8,6 +8,10 @@ import br.edu.iftm.uberhub_mentorias_auth_service.port.*;
 
 @Service
 public class AuthService {
+    /** Resposta única para contas elegíveis, desconhecidas ou não elegíveis (anti-enumeração). */
+    public static final String RECOVERY_REQUESTED_MESSAGE =
+            "Se houver uma conta elegível, enviaremos as instruções de recuperação.";
+
     private final FirebaseIdentityVerifier identities;
     private final UserAccountPort users;
     private final UberHubSessionService sessions;
@@ -43,6 +47,6 @@ public class AuthService {
 
     public MessageResponse recoverPassword(RecoverPasswordRequest request) {
         recovery.requestRecovery(request.email());
-        return new MessageResponse("Se houver uma conta elegível, enviaremos as instruções de recuperação.");
+        return new MessageResponse(RECOVERY_REQUESTED_MESSAGE);
     }
 }

@@ -69,10 +69,11 @@ class AuthControllerTest {
     @Test
     void recoveryReturnsMessage() throws Exception {
         when(service.recoverPassword(new RecoverPasswordRequest("user@example.com")))
-                .thenReturn(new MessageResponse("Se houver uma conta elegível, enviaremos as instruções de recuperação."));
+                .thenReturn(new MessageResponse(AuthService.RECOVERY_REQUESTED_MESSAGE));
         mvc.perform(post("/auth/recover-password").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"user@example.com\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.message").exists());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(AuthService.RECOVERY_REQUESTED_MESSAGE));
         verify(service).recoverPassword(new RecoverPasswordRequest("user@example.com"));
     }
 
@@ -131,5 +132,50 @@ class AuthControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(content().string(not(containsString("SECRET_PROVIDER_DETAIL"))));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"register,idToken", "login,idToken", "refresh,refreshToken", "recover-password,email"})
+    void inputsAboveLimitAreRejectedBeforeService(String operation, String field) throws Exception {
+        String oversized = "email".equals(field)
+                ? "a".repeat(245) + "@example.com"
+                : "a".repeat(InputLimits.TOKEN_MAX + 1);
+        mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"" + field + "\":\"" + oversized + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fieldErrors[?(@.field=='" + field + "')]").exists())
+                .andExpect(content().string(not(containsString(oversized))));
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void tokenAtLimitIsAccepted() throws Exception {
+        String token = "a".repeat(InputLimits.TOKEN_MAX);
+        when(service.login(any())).thenReturn(new TokenResponse("access", "refresh", "Bearer", 900));
+        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+        verify(service).login(new LoginRequest(token));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"register", "login", "refresh", "recover-password"})
+    void getIsNotAllowedAndAdvertisesPost(String operation) throws Exception {
+        mvc.perform(get("/auth/" + operation))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().string("Allow", containsString("POST")))
+                .andExpect(content().string(""));
+        verifyNoInteractions(service);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"register", "login", "refresh", "recover-password"})
+    void nonJsonBodyIsUnsupportedMediaType(String operation) throws Exception {
+        mvc.perform(post("/auth/" + operation).contentType(MediaType.TEXT_PLAIN).content("plain-body"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").doesNotExist());
+        verifyNoInteractions(service);
     }
 }

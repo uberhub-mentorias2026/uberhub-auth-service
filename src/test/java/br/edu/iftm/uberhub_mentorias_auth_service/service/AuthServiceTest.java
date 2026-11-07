@@ -119,7 +119,7 @@ class AuthServiceTest {
     @ValueSource(strings = {"eligible@example.com", "unknown@example.com", "google-only@example.com"})
     void recoveryAlwaysReturnsGenericMessage(String email) {
         assertThat(service.recoverPassword(new RecoverPasswordRequest(email)).message())
-                .isEqualTo("Se houver uma conta elegível, enviaremos as instruções de recuperação.");
+                .isEqualTo(AuthService.RECOVERY_REQUESTED_MESSAGE);
         verify(recovery).requestRecovery(email);
         verifyNoInteractions(identities, users, sessions);
     }
@@ -171,5 +171,12 @@ class AuthServiceTest {
         assertThat(new RefreshRequest("secret").toString()).doesNotContain("secret");
         assertThat(tokens.toString()).doesNotContain("rotated-refresh");
         assertThat(TokenResponse.from(tokens).toString()).doesNotContain("rotated-refresh");
+    }
+
+    @Test
+    void recoverPasswordRequestDoesNotExposeEmailThroughToString() {
+        assertThat(new RecoverPasswordRequest("person@example.com").toString())
+                .doesNotContain("person@example.com")
+                .contains("REDACTED");
     }
 }
