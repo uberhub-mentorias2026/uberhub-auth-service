@@ -1,0 +1,784 @@
+{
+  "info": {
+    "_postman_id": "f53cdc7f-d9a9-53aa-8a7e-1b65112bc996",
+    "name": "UberHub Auth — testes locais (perfil postman-mock)",
+    "description": "Cenários fictícios das quatro APIs de autenticação. Requer o perfil postman-mock em 127.0.0.1:8081. Ver docs/POSTMAN-TESTES.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const documented = {\"/auth/register\": [201, 400, 401, 405, 409, 415, 500, 503], \"/auth/login\": [200, 400, 401, 403, 405, 409, 415, 500, 503], \"/auth/refresh\": [200, 400, 401, 403, 405, 415, 500, 503], \"/auth/recover-password\": [200, 400, 405, 415, 500, 503]};",
+          "const problemCodes = [\"VALIDATION_ERROR\", \"MALFORMED_REQUEST\", \"INVALID_FIREBASE_TOKEN\", \"INVALID_REFRESH_TOKEN\", \"ACCOUNT_INACTIVE\", \"ACCOUNT_ALREADY_EXISTS\", \"REGISTRATION_REQUIRED\", \"DEPENDENCY_UNAVAILABLE\", \"INTERNAL_ERROR\"];",
+          "const path = pm.request.url.getPath();",
+          "const status = pm.response.code;",
+          "pm.test(\"Status HTTP documentado em docs/auth-api.yaml para \" + path, function () {",
+          "  pm.expect(documented[path] || [], \"rota fora do contrato\").to.include(status);",
+          "});",
+          "pm.test(\"Erros da API trazem code do contrato\", function () {",
+          "  if ([400, 401, 403, 409, 500, 503].includes(status)) {",
+          "    const b = pm.response.json();",
+          "    pm.expect(problemCodes).to.include(b.code);",
+          "  }",
+          "});",
+          "pm.test(\"Sem stack trace ou detalhe interno\", function () {",
+          "  pm.expect(pm.response.text()).to.not.match(/Exception|at br\\.edu|stacktrace/i);",
+          "});",
+          "pm.test(\"Erros não ecoam credenciais enviadas\", function () {",
+          "  if (status >= 400 && pm.request.body && pm.request.body.raw) {",
+          "    const sent = JSON.parse(pm.request.body.raw);",
+          "    Object.keys(sent).forEach(k => {",
+          "      const v = String(sent[k]);",
+          "      if (v.length > 3) pm.expect(pm.response.text()).to.not.include(v);",
+          "    });",
+          "  }",
+          "});",
+          "pm.test(\"Erros em JSON com Content-Type de problema\", function () {",
+          "  if (status >= 400 && status !== 405 && pm.response.text().length > 0) {",
+          "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+          "  }",
+          "});",
+          "pm.test(\"Respostas de token não são armazenadas em cache\", function () {",
+          "  if (status === 200 && (path === \"/auth/login\" || path === \"/auth/refresh\")) {",
+          "    pm.expect(pm.response.headers.get(\"Cache-Control\")).to.eql(\"no-store\");",
+          "  }",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Cadastro (register)",
+      "item": [
+        {
+          "name": "01 Cadastro - sucesso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Retorna somente userId\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.userId).to.eql(\"fake-user-new-user\");",
+                  "  pm.expect(b).to.not.have.property(\"accessToken\");",
+                  "  pm.expect(b).to.not.have.property(\"refreshToken\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"idToken\": \"mock-new-user\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Cenário: identidade nova (mock-new-user). Resposta 201 com userId fictício e sem tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "02 Cadastro - ID Token ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = VALIDATION_ERROR\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\");",
+                  "});",
+                  "pm.test(\"fieldErrors aponta idToken\", function () {",
+                  "  const f = pm.response.json().fieldErrors || [];",
+                  "  pm.expect(f.map(e => e.field)).to.include(\"idToken\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Cenário: corpo sem idToken. 400 VALIDATION_ERROR com fieldErrors."
+          },
+          "response": []
+        },
+        {
+          "name": "03 Cadastro - ID Token inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = INVALID_FIREBASE_TOKEN\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"INVALID_FIREBASE_TOKEN\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"idToken\": \"mock-invalid\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Cenário: token fictício não reconhecido pelo verificador simulado. 401 INVALID_FIREBASE_TOKEN."
+          },
+          "response": []
+        },
+        {
+          "name": "04 Cadastro - duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = ACCOUNT_ALREADY_EXISTS\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"ACCOUNT_ALREADY_EXISTS\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"idToken\": \"mock-existing-user\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Cenário: identidade já cadastrada (mock-existing-user). 409 ACCOUNT_ALREADY_EXISTS."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Login",
+      "item": [
+        {
+          "name": "05 Login - sucesso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Tokens fictícios e Bearer\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.accessToken).to.be.a(\"string\");",
+                  "  pm.expect(b.refreshToken).to.be.a(\"string\");",
+                  "  pm.expect(b.tokenType).to.eql(\"Bearer\");",
+                  "  pm.expect(b.expiresIn).to.be.a(\"number\");",
+                  "});",
+                  "pm.test(\"Cache-Control: no-store\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Cache-Control\")).to.eql(\"no-store\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"idToken\": \"{{idToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Cenário: variável idToken do Environment (mock-existing-user). 200 com tokens fictícios e no-store."
+          },
+          "response": []
+        },
+        {
+          "name": "06 Login - sem cadastro (REGISTRATION_REQUIRED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = REGISTRATION_REQUIRED\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"REGISTRATION_REQUIRED\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"idToken\": \"mock-new-user\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Cenário: identidade sem conta local. 409 REGISTRATION_REQUIRED. Não cria conta automaticamente."
+          },
+          "response": []
+        },
+        {
+          "name": "07 Login - conta inativa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = ACCOUNT_INACTIVE\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"ACCOUNT_INACTIVE\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"idToken\": \"mock-inactive-user\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Cenário: conta existente porém inativa. 403 ACCOUNT_INACTIVE."
+          },
+          "response": []
+        },
+        {
+          "name": "08 Login - ID Token inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = INVALID_FIREBASE_TOKEN\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"INVALID_FIREBASE_TOKEN\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"idToken\": \"mock-invalid\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Cenário: token fictício inválido. 401 INVALID_FIREBASE_TOKEN."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Refresh",
+      "item": [
+        {
+          "name": "09 Refresh - renovação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Refresh rotacionado e no-store\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.refreshToken).to.not.eql(pm.environment.get(\"refreshToken\"));",
+                  "  pm.expect(pm.response.headers.get(\"Cache-Control\")).to.eql(\"no-store\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refreshToken\": \"{{refreshToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Cenário: variável refreshToken do Environment (mock-refresh-valid). 200 com refresh rotacionado."
+          },
+          "response": []
+        },
+        {
+          "name": "10 Refresh - token inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = INVALID_REFRESH_TOKEN\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"INVALID_REFRESH_TOKEN\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refreshToken\": \"mock-refresh-unknown\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Cenário: refresh token fictício desconhecido. 401 INVALID_REFRESH_TOKEN."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Recuperação de senha",
+      "item": [
+        {
+          "name": "11 Recuperação - solicitação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Mensagem genérica\", function () {",
+                  "  pm.expect(pm.response.json().message).to.eql(\"Se houver uma conta elegível, enviaremos as instruções de recuperação.\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"person@example.test\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/recover-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "recover-password"
+              ]
+            },
+            "description": "Cenário: e-mail fictício comum. 200 com mensagem genérica."
+          },
+          "response": []
+        },
+        {
+          "name": "12 Recuperação - e-mail inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = VALIDATION_ERROR\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"VALIDATION_ERROR\");",
+                  "});",
+                  "pm.test(\"fieldErrors aponta email\", function () {",
+                  "  const f = pm.response.json().fieldErrors || [];",
+                  "  pm.expect(f.map(e => e.field)).to.include(\"email\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"not-an-email\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/recover-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "recover-password"
+              ]
+            },
+            "description": "Cenário: e-mail malformado. 400 VALIDATION_ERROR."
+          },
+          "response": []
+        },
+        {
+          "name": "13 Recuperação - mensagem genérica anti-enumeração",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Mesma mensagem genérica para e-mail desconhecido\", function () {",
+                  "  pm.expect(pm.response.json().message).to.eql(\"Se houver uma conta elegível, enviaremos as instruções de recuperação.\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"unknown@example.test\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/recover-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "recover-password"
+              ]
+            },
+            "description": "Cenário: e-mail desconhecido. Deve receber exatamente a mesma resposta que um e-mail elegível (request 11)."
+          },
+          "response": []
+        },
+        {
+          "name": "14 Recuperação - indisponibilidade (503)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 503\", function () { pm.response.to.have.status(503); });",
+                  "pm.test(\"Content-Type application/problem+json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "});",
+                  "pm.test(\"code = DEPENDENCY_UNAVAILABLE\", function () {",
+                  "  pm.expect(pm.response.json().code).to.eql(\"DEPENDENCY_UNAVAILABLE\");",
+                  "});",
+                  "pm.test(\"Sem mensagem de sucesso na indisponibilidade\", function () {",
+                  "  pm.expect(pm.response.text()).to.not.include(\"instruções de recuperação\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"unavailable@example.test\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/recover-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "recover-password"
+              ]
+            },
+            "description": "Cenário: e-mail que dispara falha simulada do gateway. 503 DEPENDENCY_UNAVAILABLE."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": []
+}
