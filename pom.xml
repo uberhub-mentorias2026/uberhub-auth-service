@@ -140,4 +140,63 @@
 		</plugins>
 	</build>
 
+	<!--
+		Ambiente local de testes manuais (Postman). Não é ativado por padrão: o artefato de produção
+		não inclui as fontes em src/local-mock/. Uso: sh mvnw -Plocal-mock ...
+	-->
+	<profiles>
+		<profile>
+			<id>local-mock</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>build-helper-maven-plugin</artifactId>
+						<version>3.6.0</version>
+						<executions>
+							<execution>
+								<id>add-local-mock-sources</id>
+								<phase>generate-sources</phase>
+								<goals>
+									<goal>add-source</goal>
+								</goals>
+								<configuration>
+									<sources>
+										<source>src/local-mock/java</source>
+									</sources>
+								</configuration>
+							</execution>
+							<execution>
+								<id>add-local-mock-resources</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>add-resource</goal>
+								</goals>
+								<configuration>
+									<resources>
+										<resource>
+											<directory>src/local-mock/resources</directory>
+										</resource>
+									</resources>
+								</configuration>
+							</execution>
+							<execution>
+								<id>add-local-mock-test-sources</id>
+								<phase>generate-test-sources</phase>
+								<goals>
+									<goal>add-test-source</goal>
+								</goals>
+								<configuration>
+									<sources>
+										<source>src/local-mock/test/java</source>
+									</sources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>
