@@ -51,30 +51,66 @@ class AuthServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"register"})
+    @ValueSource(strings = {"register", "login"})
     void invalidIdentityStopsProcessing(String operation) {
         var failure = new AuthException(AuthErrorCode.INVALID_FIREBASE_TOKEN);
         when(identities.verify("bad-token")).thenThrow(failure);
         assertThatThrownBy(() -> {
             if (operation.equals("register")) service.register(new RegisterRequest("bad-token"));
+            else service.login(new LoginRequest("bad-token"));
         }).isSameAs(failure);
         verifyNoInteractions(users, sessions, recovery);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"google-id-token", "email-password-id-token"})
+    void loginUsesFirebaseUidAndExistingAccountPermissions(String token) {
+        var existing = new UserAccount("local-id", "firebase-uid", true, Set.of("EXISTING_PERMISSION"));
+        when(identities.verify(token)).thenReturn(identity);
+        when(users.findByFirebaseUid("firebase-uid")).thenReturn(Optional.of(existing));
+        when(sessions.issue(existing)).thenReturn(tokens);
+        assertThat(service.login(new LoginRequest(token))).isEqualTo(TokenResponse.from(tokens));
+        verify(users, never()).register(any());
+        verify(sessions).issue(existing);
+    }
+
+    @Test
+    void firstGoogleAccessRequiresRegistrationThenAllowsLogin() {
+        when(identities.verify("google-token")).thenReturn(identity);
+        when(users.findByFirebaseUid("firebase-uid")).thenReturn(Optional.empty(), Optional.of(account));
+        assertThatThrownBy(() -> service.login(new LoginRequest("google-token")))
+                .isInstanceOfSatisfying(AuthException.class,
+                        error -> assertThat(error.code()).isEqualTo(AuthErrorCode.REGISTRATION_REQUIRED));
+        verifyNoInteractions(sessions);
+        verify(users, never()).register(any());
+        when(users.register(identity)).thenReturn(account);
+        assertThat(service.register(new RegisterRequest("google-token")).userId()).isEqualTo("local-id");
+        when(sessions.issue(account)).thenReturn(tokens);
+        assertThat(service.login(new LoginRequest("google-token"))).isEqualTo(TokenResponse.from(tokens));
+    }
+
+    @Test
+    void inactiveAccountCannotReceiveTokens() {
+        when(identities.verify("token")).thenReturn(identity);
+        when(users.findByFirebaseUid("firebase-uid"))
+                .thenReturn(Optional.of(new UserAccount("local-id", "firebase-uid", false, Set.of())));
+        assertThatThrownBy(() -> service.login(new LoginRequest("token")))
+                .isInstanceOfSatisfying(AuthException.class,
+                        error -> assertThat(error.code()).isEqualTo(AuthErrorCode.ACCOUNT_INACTIVE));
+        verifyNoInteractions(sessions);
     }
 
 
 
 
-
-
-
     @ParameterizedTest
-    @ValueSource(strings = {"firebase", "register"})
+    @ValueSource(strings = {"firebase", "register", "lookup", "issue"})
     void operationalFailuresAreNotConvertedIntoSuccess(String dependency) {
         var failure = new AuthException(AuthErrorCode.DEPENDENCY_UNAVAILABLE);
         switch (dependency) {
             case "firebase" -> {
                 when(identities.verify("token")).thenThrow(failure);
-                assertThatThrownBy(() -> service.register(new RegisterRequest("token"))).isSameAs(failure);
+                assertThatThrownBy(() -> service.login(new LoginRequest("token"))).isSameAs(failure);
                 verifyNoInteractions(users, sessions);
             }
             case "register" -> {
@@ -83,12 +119,26 @@ class AuthServiceTest {
                 assertThatThrownBy(() -> service.register(new RegisterRequest("token"))).isSameAs(failure);
                 verifyNoInteractions(sessions);
             }
+            case "lookup" -> {
+                when(identities.verify("token")).thenReturn(identity);
+                when(users.findByFirebaseUid("firebase-uid")).thenThrow(failure);
+                assertThatThrownBy(() -> service.login(new LoginRequest("token"))).isSameAs(failure);
+                verifyNoInteractions(sessions);
+            }
+            case "issue" -> {
+                when(identities.verify("token")).thenReturn(identity);
+                when(users.findByFirebaseUid("firebase-uid")).thenReturn(Optional.of(account));
+                when(sessions.issue(account)).thenThrow(failure);
+                assertThatThrownBy(() -> service.login(new LoginRequest("token"))).isSameAs(failure);
+            }
         }
     }
 
     @Test
     void tokenObjectsDoNotLeakTokensThroughToString() {
         assertThat(new RegisterRequest("secret").toString()).doesNotContain("secret");
+        assertThat(new LoginRequest("secret").toString()).doesNotContain("secret");
         assertThat(tokens.toString()).doesNotContain("rotated-refresh");
+        assertThat(TokenResponse.from(tokens).toString()).doesNotContain("rotated-refresh");
     }
 }

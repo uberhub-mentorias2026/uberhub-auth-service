@@ -49,10 +49,25 @@ class AuthControllerTest {
         verify(service).register(new RegisterRequest("token"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"login"})
+    void tokenResponsesAreNotCacheable(String operation) throws Exception {
+        var response = new TokenResponse("access", "refresh", "Bearer", 900);
+        if (operation.equals("login")) when(service.login(new LoginRequest("token"))).thenReturn(response);
+        String field = operation.equals("login") ? "idToken" : "refreshToken";
+        mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"" + field + "\":\"token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.accessToken").value("access"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh"))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(900));
+    }
 
 
     @ParameterizedTest
-    @CsvSource({"register,idToken"})
+    @CsvSource({"register,idToken", "login,idToken"})
     void missingAndBlankFieldsAreRejected(String operation, String field) throws Exception {
         for (String body : new String[]{"{}", "{\"" + field + "\":null}", "{\"" + field + "\":\"   \"}"}) {
             mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON).content(body))
@@ -65,7 +80,7 @@ class AuthControllerTest {
 
 
     @ParameterizedTest
-    @ValueSource(strings = {"register"})
+    @ValueSource(strings = {"register", "login"})
     void malformedJsonDoesNotLeakRequest(String operation) throws Exception {
         mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON)
                 .content("{SECRET_TOKEN"))
@@ -80,13 +95,13 @@ class AuthControllerTest {
             "ACCOUNT_ALREADY_EXISTS,409", "REGISTRATION_REQUIRED,409", "DEPENDENCY_UNAVAILABLE,503",
             "INTERNAL_ERROR,500", "VALIDATION_ERROR,400", "MALFORMED_REQUEST,400"})
     void mapsKnownFailuresWithoutLeakingProviderDetails(AuthErrorCode code, int expectedStatus) throws Exception {
-        when(service.register(any())).thenThrow(new AuthException(code, new RuntimeException("SECRET_PROVIDER_DETAIL")));
-        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content("{\"idToken\":\"token\"}"))
+        when(service.login(any())).thenThrow(new AuthException(code, new RuntimeException("SECRET_PROVIDER_DETAIL")));
+        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"idToken\":\"token\"}"))
                 .andExpect(status().is(expectedStatus))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(expectedStatus))
                 .andExpect(jsonPath("$.code").value(code.name()))
-                .andExpect(jsonPath("$.instance").value("/auth/register"))
+                .andExpect(jsonPath("$.instance").value("/auth/login"))
                 .andExpect(content().string(not(containsString("SECRET_PROVIDER_DETAIL"))));
     }
 

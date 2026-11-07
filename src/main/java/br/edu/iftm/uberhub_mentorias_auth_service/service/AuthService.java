@@ -27,6 +27,15 @@ public class AuthService {
         return new RegisterResponse(account.userId());
     }
 
+    public TokenResponse login(LoginRequest request) {
+        var identity = identities.verify(request.idToken());
+        var account = users.findByFirebaseUid(identity.firebaseUid())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.REGISTRATION_REQUIRED));
+        if (!account.active()) {
+            throw new AuthException(AuthErrorCode.ACCOUNT_INACTIVE);
+        }
+        return TokenResponse.from(sessions.issue(account));
+    }
 
 
 }
