@@ -59,6 +59,7 @@ O SDK obtém credenciais por `GoogleCredentials.getApplicationDefault()`. Não f
 
 - `POST /auth/register`: recebe `idToken`, verifica a identidade e solicita cadastro único pelo Firebase UID; retorna 201 com `userId`. Cadastro repetido retorna 409. Não atribui permissões nem emite tokens.
 - `POST /auth/login`: recebe `idToken`, consulta a conta pelo UID, verifica status e solicita tokens UberHub; retorna 200. Conta ausente retorna 409 `REGISTRATION_REQUIRED`, sem cadastro automático; conta inativa retorna 403.
+- `POST /auth/refresh`: recebe `refreshToken` UberHub, delega validação/renovação atômica ao componente de sessão e retorna os tokens que o cliente deve conservar.
 
 DTOs, AuthController, AuthService e AuthExceptionHandler coordenam estes contratos. As integrações de usuários, JWT e recuperação continuam sob responsabilidade dos respectivos integrantes. O serviço recebe as quatro interfaces compartilhadas no construtor; mocks existem somente nos testes.
 

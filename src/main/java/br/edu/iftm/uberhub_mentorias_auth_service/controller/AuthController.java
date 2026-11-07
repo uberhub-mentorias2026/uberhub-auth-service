@@ -27,5 +27,9 @@ public class AuthController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.login(request));
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.refresh(request));
+    }
 
 }

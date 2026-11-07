@@ -50,10 +50,11 @@ class AuthControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"login"})
+    @ValueSource(strings = {"login", "refresh"})
     void tokenResponsesAreNotCacheable(String operation) throws Exception {
         var response = new TokenResponse("access", "refresh", "Bearer", 900);
         if (operation.equals("login")) when(service.login(new LoginRequest("token"))).thenReturn(response);
+        else when(service.refresh(new RefreshRequest("token"))).thenReturn(response);
         String field = operation.equals("login") ? "idToken" : "refreshToken";
         mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"" + field + "\":\"token\"}"))
@@ -67,7 +68,7 @@ class AuthControllerTest {
 
 
     @ParameterizedTest
-    @CsvSource({"register,idToken", "login,idToken"})
+    @CsvSource({"register,idToken", "login,idToken", "refresh,refreshToken"})
     void missingAndBlankFieldsAreRejected(String operation, String field) throws Exception {
         for (String body : new String[]{"{}", "{\"" + field + "\":null}", "{\"" + field + "\":\"   \"}"}) {
             mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON).content(body))
@@ -80,7 +81,7 @@ class AuthControllerTest {
 
 
     @ParameterizedTest
-    @ValueSource(strings = {"register", "login"})
+    @ValueSource(strings = {"register", "login", "refresh"})
     void malformedJsonDoesNotLeakRequest(String operation) throws Exception {
         mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON)
                 .content("{SECRET_TOKEN"))

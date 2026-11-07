@@ -100,11 +100,24 @@ class AuthServiceTest {
         verifyNoInteractions(sessions);
     }
 
+    @Test
+    void refreshDelegatesAtomicRenewalAndReturnsRotatedToken() {
+        when(sessions.refresh("old-refresh")).thenReturn(tokens);
+        assertThat(service.refresh(new RefreshRequest("old-refresh"))).isEqualTo(TokenResponse.from(tokens));
+        verifyNoInteractions(identities, users, recovery);
+    }
 
+    @Test
+    void invalidRefreshPropagatesWithoutIssuingAnotherSession() {
+        var failure = new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        when(sessions.refresh("expired")).thenThrow(failure);
+        assertThatThrownBy(() -> service.refresh(new RefreshRequest("expired"))).isSameAs(failure);
+        verify(sessions, never()).issue(any());
+    }
 
 
     @ParameterizedTest
-    @ValueSource(strings = {"firebase", "register", "lookup", "issue"})
+    @ValueSource(strings = {"firebase", "register", "lookup", "issue", "refresh"})
     void operationalFailuresAreNotConvertedIntoSuccess(String dependency) {
         var failure = new AuthException(AuthErrorCode.DEPENDENCY_UNAVAILABLE);
         switch (dependency) {
@@ -131,6 +144,10 @@ class AuthServiceTest {
                 when(sessions.issue(account)).thenThrow(failure);
                 assertThatThrownBy(() -> service.login(new LoginRequest("token"))).isSameAs(failure);
             }
+            case "refresh" -> {
+                when(sessions.refresh("token")).thenThrow(failure);
+                assertThatThrownBy(() -> service.refresh(new RefreshRequest("token"))).isSameAs(failure);
+            }
         }
     }
 
@@ -138,6 +155,7 @@ class AuthServiceTest {
     void tokenObjectsDoNotLeakTokensThroughToString() {
         assertThat(new RegisterRequest("secret").toString()).doesNotContain("secret");
         assertThat(new LoginRequest("secret").toString()).doesNotContain("secret");
+        assertThat(new RefreshRequest("secret").toString()).doesNotContain("secret");
         assertThat(tokens.toString()).doesNotContain("rotated-refresh");
         assertThat(TokenResponse.from(tokens).toString()).doesNotContain("rotated-refresh");
     }

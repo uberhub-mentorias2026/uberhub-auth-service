@@ -37,5 +37,8 @@ public class AuthService {
         return TokenResponse.from(sessions.issue(account));
     }
 
+    public TokenResponse refresh(RefreshRequest request) {
+        return TokenResponse.from(sessions.refresh(request.refreshToken()));
+    }
 
 }
