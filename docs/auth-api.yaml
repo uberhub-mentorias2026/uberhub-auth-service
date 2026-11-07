@@ -270,6 +270,65 @@
           }
         }
       }
+    },
+    "/auth/recover-password": {
+      "post": {
+        "operationId": "recoverPassword",
+        "description": "Solicita recuperação Firebase. Resposta igual para conta elegível, desconhecida ou não elegível. Nunca recebe senha nem retorna link de redefinição.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operação concluída.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR ou MALFORMED_REQUEST",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DEPENDENCY_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL_ERROR",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -313,6 +372,19 @@
           "refreshToken"
         ]
       },
+      "RecoverPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
       "RegisterResponse": {
         "type": "object",
         "properties": {
@@ -353,6 +425,18 @@
           "refreshToken",
           "tokenType",
           "expiresIn"
+        ]
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Se houver uma conta elegível, enviaremos as instruções de recuperação."
+          }
+        },
+        "required": [
+          "message"
         ]
       },
       "Problem": {

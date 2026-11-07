@@ -41,4 +41,8 @@ public class AuthService {
         return TokenResponse.from(sessions.refresh(request.refreshToken()));
     }
 
+    public MessageResponse recoverPassword(RecoverPasswordRequest request) {
+        recovery.requestRecovery(request.email());
+        return new MessageResponse("Se houver uma conta elegível, enviaremos as instruções de recuperação.");
+    }
 }

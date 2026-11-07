@@ -115,9 +115,17 @@ class AuthServiceTest {
         verify(sessions, never()).issue(any());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"eligible@example.com", "unknown@example.com", "google-only@example.com"})
+    void recoveryAlwaysReturnsGenericMessage(String email) {
+        assertThat(service.recoverPassword(new RecoverPasswordRequest(email)).message())
+                .isEqualTo("Se houver uma conta elegível, enviaremos as instruções de recuperação.");
+        verify(recovery).requestRecovery(email);
+        verifyNoInteractions(identities, users, sessions);
+    }
 
     @ParameterizedTest
-    @ValueSource(strings = {"firebase", "register", "lookup", "issue", "refresh"})
+    @ValueSource(strings = {"firebase", "register", "lookup", "issue", "refresh", "recovery"})
     void operationalFailuresAreNotConvertedIntoSuccess(String dependency) {
         var failure = new AuthException(AuthErrorCode.DEPENDENCY_UNAVAILABLE);
         switch (dependency) {
@@ -147,6 +155,11 @@ class AuthServiceTest {
             case "refresh" -> {
                 when(sessions.refresh("token")).thenThrow(failure);
                 assertThatThrownBy(() -> service.refresh(new RefreshRequest("token"))).isSameAs(failure);
+            }
+            case "recovery" -> {
+                doThrow(failure).when(recovery).requestRecovery("user@example.com");
+                assertThatThrownBy(() -> service.recoverPassword(new RecoverPasswordRequest("user@example.com")))
+                        .isSameAs(failure);
             }
         }
     }

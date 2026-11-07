@@ -32,4 +32,8 @@ public class AuthController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.refresh(request));
     }
 
+    @PostMapping("/recover-password")
+    public MessageResponse recoverPassword(@Valid @RequestBody RecoverPasswordRequest request) {
+        return service.recoverPassword(request);
+    }
 }

@@ -66,9 +66,18 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.expiresIn").value(900));
     }
 
+    @Test
+    void recoveryReturnsMessage() throws Exception {
+        when(service.recoverPassword(new RecoverPasswordRequest("user@example.com")))
+                .thenReturn(new MessageResponse("Se houver uma conta elegível, enviaremos as instruções de recuperação."));
+        mvc.perform(post("/auth/recover-password").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"user@example.com\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.message").exists());
+        verify(service).recoverPassword(new RecoverPasswordRequest("user@example.com"));
+    }
 
     @ParameterizedTest
-    @CsvSource({"register,idToken", "login,idToken", "refresh,refreshToken"})
+    @CsvSource({"register,idToken", "login,idToken", "refresh,refreshToken", "recover-password,email"})
     void missingAndBlankFieldsAreRejected(String operation, String field) throws Exception {
         for (String body : new String[]{"{}", "{\"" + field + "\":null}", "{\"" + field + "\":\"   \"}"}) {
             mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON).content(body))
@@ -79,9 +88,18 @@ class AuthControllerTest {
         verifyNoInteractions(service);
     }
 
+    @Test
+    void invalidEmailDoesNotReachService() throws Exception {
+        mvc.perform(post("/auth/recover-password").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(content().string(not(containsString("not-an-email"))));
+        verifyNoInteractions(service);
+    }
 
     @ParameterizedTest
-    @ValueSource(strings = {"register", "login", "refresh"})
+    @ValueSource(strings = {"register", "login", "refresh", "recover-password"})
     void malformedJsonDoesNotLeakRequest(String operation) throws Exception {
         mvc.perform(post("/auth/" + operation).contentType(MediaType.APPLICATION_JSON)
                 .content("{SECRET_TOKEN"))
