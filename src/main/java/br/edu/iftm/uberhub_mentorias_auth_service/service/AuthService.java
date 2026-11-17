@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 import br.edu.iftm.uberhub_mentorias_auth_service.dto.*;
 import br.edu.iftm.uberhub_mentorias_auth_service.exception.AuthErrorCode;
 import br.edu.iftm.uberhub_mentorias_auth_service.exception.AuthException;
+import br.edu.iftm.uberhub_mentorias_auth_service.model.Credencial; 
+import br.edu.iftm.uberhub_mentorias_auth_service.repository.CredencialRepository; 
 import br.edu.iftm.uberhub_mentorias_auth_service.port.*;
 
 @Service
@@ -16,18 +18,42 @@ public class AuthService {
     private final UserAccountPort users;
     private final UberHubSessionService sessions;
     private final PasswordRecoveryGateway recovery;
+    private final CredencialRepository credencialRepository; 
 
     public AuthService(FirebaseIdentityVerifier identities, UserAccountPort users,
-                       UberHubSessionService sessions, PasswordRecoveryGateway recovery) {
+                        UberHubSessionService sessions, PasswordRecoveryGateway recovery) {
         this.identities = identities;
         this.users = users;
         this.sessions = sessions;
         this.recovery = recovery;
+        this.credencialRepository = null; // protege os testes que não usam o MongoDB
+    }
+
+    // construtor completo com 5 argumentos 
+    public AuthService(FirebaseIdentityVerifier identities, UserAccountPort users,
+                        UberHubSessionService sessions, PasswordRecoveryGateway recovery,
+                        CredencialRepository credencialRepository) {
+        this.identities = identities;
+        this.users = users;
+        this.sessions = sessions;
+        this.recovery = recovery;
+        this.credencialRepository = credencialRepository;
     }
 
     public RegisterResponse register(RegisterRequest request) {
         var identity = identities.verify(request.idToken());
         var account = users.register(identity);
+
+        // tenta salvar no MongoDB apenas se o repositório foi injetado 
+        if (credencialRepository != null) {
+            if (credencialRepository.findByFirebaseUid(identity.firebaseUid()).isEmpty()) {
+                credencialRepository.save(Credencial.builder()
+                        .firebaseUid(identity.firebaseUid())
+                        .email(identity.email())
+                        .build());
+            }
+        }
+
         return new RegisterResponse(account.userId());
     }
 
