@@ -1,5 +1,7 @@
 # Andamento do projeto — UberHub Mentorias Auth Service
 
+> **Atualização local posterior à revisão da main:** a branch `fix/auth-mongodb-local-mock` corrige a inicialização e isola MongoDB no Postman. Validação: 69 testes padrão, 93 locais e 125 asserções Newman aprovados. A integração da correção à main depende de revisão e merge; o diagnóstico abaixo registra a main `32c3555`. Consulte [a correção e os comandos atuais](CORRECAO-MONGO-LOCAL.md).
+
 Apresentação de andamento ao professor Cadu. Revisão: **18/11/2026**.
 
 Base: [repositório oficial](https://github.com/uberhub-mentorias2026/uberhub-auth-service), branch `main`, commit [`32c3555`](https://github.com/uberhub-mentorias2026/uberhub-auth-service/commit/32c3555925af40c27fa8467acbc8eb226216572c). Os PRs #1 a #5 estão integrados. O documento considera o código dessa versão, sem incluir alterações locais ou entregas de outros repositórios.
