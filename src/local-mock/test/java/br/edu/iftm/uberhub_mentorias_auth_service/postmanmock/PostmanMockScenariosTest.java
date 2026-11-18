@@ -19,6 +19,11 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.context.ApplicationContext;
+import com.mongodb.client.MongoClient;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import br.edu.iftm.uberhub_mentorias_auth_service.repository.CredencialRepository;
 
 /**
  * Verifica, com o contexto real e o perfil postman-mock, que cada cenário da collection do Postman
@@ -30,6 +35,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PostmanMockScenariosTest {
     private static final String GENERIC_MESSAGE =
             "Se houver uma conta elegível, enviaremos as instruções de recuperação.";
+
+    @Autowired
+    private ApplicationContext context;
+
+    @Test
+    void localProfileHasNoMongoInfrastructure() {
+        assertThat(context.getBeansOfType(MongoClient.class)).isEmpty();
+        assertThat(context.getBeansOfType(MongoTemplate.class)).isEmpty();
+        assertThat(context.getBeansOfType(CredencialRepository.class)).isEmpty();
+    }
 
     @Autowired
     private MockMvc mvc;

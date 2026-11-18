@@ -1,5 +1,6 @@
 package br.edu.iftm.uberhub_mentorias_auth_service.postmanmock;
 
+import br.edu.iftm.uberhub_mentorias_auth_service.service.AuthService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -56,6 +57,13 @@ public class PostmanMockConfiguration {
     @Bean
     PasswordRecoveryGateway postmanMockPasswordRecoveryGateway() {
         return new PostmanMockPorts.FakePasswordRecoveryGateway();
+    }
+
+    /** Usa a mesma orquestração, sem repositório ou cliente MongoDB no ambiente local. */
+    @Bean
+    AuthService postmanMockAuthService(FirebaseIdentityVerifier identities, UserAccountPort users,
+            UberHubSessionService sessions, PasswordRecoveryGateway recovery) {
+        return new AuthService(identities, users, sessions, recovery);
     }
 
     /** Libera somente as quatro rotas POST de autenticação; qualquer outra requisição é negada. */

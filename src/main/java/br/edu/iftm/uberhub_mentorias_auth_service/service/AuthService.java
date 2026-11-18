@@ -1,6 +1,8 @@
 package br.edu.iftm.uberhub_mentorias_auth_service.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import br.edu.iftm.uberhub_mentorias_auth_service.dto.*;
 import br.edu.iftm.uberhub_mentorias_auth_service.exception.AuthErrorCode;
 import br.edu.iftm.uberhub_mentorias_auth_service.exception.AuthException;
@@ -9,6 +11,7 @@ import br.edu.iftm.uberhub_mentorias_auth_service.repository.CredencialRepositor
 import br.edu.iftm.uberhub_mentorias_auth_service.port.*;
 
 @Service
+@Profile("!postman-mock")
 public class AuthService {
     /** Resposta única para contas elegíveis, desconhecidas ou não elegíveis (anti-enumeração). */
     public static final String RECOVERY_REQUESTED_MESSAGE =
@@ -26,10 +29,11 @@ public class AuthService {
         this.users = users;
         this.sessions = sessions;
         this.recovery = recovery;
-        this.credencialRepository = null; // protege os testes que não usam o MongoDB
+        this.credencialRepository = null; // construção explícita para testes e demonstração sem persistência
     }
 
-    // construtor completo com 5 argumentos 
+    /** Construtor usado pelo Spring fora do ambiente de demonstração local. */
+    @Autowired
     public AuthService(FirebaseIdentityVerifier identities, UserAccountPort users,
                         UberHubSessionService sessions, PasswordRecoveryGateway recovery,
                         CredencialRepository credencialRepository) {
