@@ -28,7 +28,7 @@ As versões são as declaradas no projeto. JWT próprio do UberHub é uma integr
 
 | Integrante | Responsabilidade | Situação verificada |
 | --- | --- | --- |
-| Cristian Passos da Silva | Base, quatro APIs, contratos, documentação e testes | PRs #1, #3 e #4 integrados; também incorporou a contribuição Firebase de Arthur no PR #2. |
+| Cristian Passos da Silva | Base, quatro APIs, contratos, documentação e testes | PRs #1, #3 e #4 integrados, detalhados na seção 5. |
 | Arthur Santana Cavichioli | Integração Firebase | Código original de configuração e verificação incorporado no PR #2. |
 | Illana Rabelo | Persistência MongoDB | Entidade, repositório e gravação condicional integrados no PR #5. |
 | Illana / Eliezer | Integração das contas usadas pela autenticação | Responsabilidade prevista nos contratos; implementação real pendente. |
@@ -50,7 +50,7 @@ A tabela distingue autoria de entregas integradas e responsabilidades registrada
 
 **Código implementado** significa que o comportamento está escrito no repositório. **Teste com mocks** confirma respostas sob dependências simuladas. **Integração real comprovada** exige evidência de execução com os serviços externos; não foi encontrada comprovação de ponta a ponta nas fontes consultadas. **Pendente** identifica implementação ausente ou validação ainda necessária.
 
-## 5. Minha contribuição: cadastro, login, refresh e recuperação de senha
+## 5. Cristian — cadastro, login, refresh e recuperação de senha
 
 Contribuição de **Cristian Passos da Silva**, integrada no PR #3:
 
@@ -61,23 +61,47 @@ Contribuição de **Cristian Passos da Silva**, integrada no PR #3:
 
 A entrega inclui validações, respostas de erro padronizadas, proteção contra cache das respostas de tokens, contrato OpenAPI e testes. Os quatro commits de implementação são `3fafb55` (cadastro), `6ba99c1` (login), `f461225` (refresh) e `5618610` (recuperação), seguidos dos ajustes de `0d4b376`.
 
-Também preparei a base de contratos no PR #1 e o ambiente Postman no PR #4. O código Firebase original é de Arthur; a persistência acrescentada no PR #5 é de Illana. A implementação das APIs coordena essas integrações, sem substituir as entregas dos colegas.
+Cristian também preparou a base de contratos no PR #1 e o ambiente Postman no PR #4. A implementação das APIs coordena as integrações de identidade, contas, sessões e recuperação.
 
-## 6. Integração Firebase
+### PRs das atividades de Cristian
 
-O adaptador incorporado no PR #2 usa o Firebase Admin SDK para verificar ID Tokens com checagem de revogação e obter identidade confiável. O contrato aceita identidade originada de Google ou de e-mail/senha; a senha não passa pelas APIs do backend.
+| PR integrado | Entrega | O que foi feito | Commit de integração |
+| --- | --- | --- | --- |
+| [#1](https://github.com/uberhub-mentorias2026/uberhub-auth-service/pull/1) | Estrutura base de autenticação | Organizou o projeto Maven/Spring Boot, definiu interfaces de integração, modelos compartilhados, códigos de erro e documentação inicial; incluiu teste de contexto com mocks. Ainda não incluía endpoints. | `01e3671` |
+| [#3](https://github.com/uberhub-mentorias2026/uberhub-auth-service/pull/3) | Cadastro, login, refresh e recuperação | Implementou as quatro APIs, DTOs e validações, coordenação dos fluxos, respostas de erro, proteção contra cache de tokens, contrato OpenAPI e testes Mockito/MockMvc. As integrações externas permanecem separadas desses fluxos. | `79daa05` |
+| [#4](https://github.com/uberhub-mentorias2026/uberhub-auth-service/pull/4) | Ambiente local e testes Postman | Criou o perfil de demonstração com dependências fictícias, restrições de execução local, script de inicialização, Collection com 14 requisições, Environment e guia de testes. Registrou 125 asserções Newman aprovadas na entrega. | `02a751d` |
+
+## 6. Arthur — configuração e integração Firebase
+
+A configuração e o adaptador originalmente desenvolvidos por **Arthur Santana Cavichioli**, incorporados ao repositório oficial no PR #2, usam o Firebase Admin SDK para verificar ID Tokens com checagem de revogação e obter identidade confiável. O contrato aceita identidade originada de Google ou de e-mail/senha; a senha não passa pelas APIs do backend.
 
 **Implementado:** configuração e código de verificação. **Testado com mocks:** comportamento do adaptador perante respostas simuladas do SDK. **Ainda não comprovado:** inicialização completa com Firebase habilitado e autenticação com tokens reais, incluindo expiração e revogação. O Firebase vem desabilitado na configuração padrão.
 
 A classificação de falhas operacionais e alguns casos de inicialização ainda precisam de validação. Recuperação com envio real de e-mail não está concluída.
 
-## 7. Persistência MongoDB
+### PR referente às configurações de Arthur
 
-O PR #5, integrado em 17/11/2026, criou o modelo de credenciais, sua consulta por identidade Firebase e uma gravação condicional no cadastro. Portanto, o projeto já possui código de persistência MongoDB.
+| PR integrado | Entrega | O que foi feito | Commit de integração |
+| --- | --- | --- | --- |
+| [#2](https://github.com/uberhub-mentorias2026/uberhub-auth-service/pull/2) | Configuração e verificação Firebase | Incorporou a configuração do Firebase Admin SDK com Application Default Credentials, o adaptador que verifica ID Tokens com checagem de revogação e os testes do adaptador com SDK simulado. Preservou a autoria original de Arthur e os contratos do serviço. | `69ed537` |
+
+A atribuição a Arthur refere-se ao código original de configuração e verificação. O PR #2 registra sua incorporação ao repositório oficial; os testes com mocks não comprovam conexão real com Firebase.
+
+## 7. Illana — persistência MongoDB
+
+A contribuição de **Illana Rabelo**, no PR #5 integrado em 17/11/2026, criou o modelo de credenciais, sua consulta por identidade Firebase e uma gravação condicional no cadastro. Portanto, o projeto já possui código de persistência MongoDB.
 
 **Estado: parcial.** Esse armazenamento ainda não fornece a conta completa consultada no login. Falta integrar identificador da conta, status e permissões, garantir unicidade sob cadastros simultâneos e testar leitura/gravação reais. Não há resultado de teste Atlas apresentado no PR #5; suas instruções de teste não comprovam execução bem-sucedida.
 
 A configuração contém uma credencial de banco versionada. A equipe precisa rotacioná-la e passar a fornecer a configuração externamente. Nenhum segredo é reproduzido aqui.
+
+### PR das atividades de Illana
+
+| PR integrado | Entrega | O que foi feito | Commit de integração |
+| --- | --- | --- | --- |
+| [#5](https://github.com/uberhub-mentorias2026/uberhub-auth-service/pull/5) | Persistência de credenciais MongoDB | Criou `Credencial`, mapeada para a coleção `credenciais`, com identificador, Firebase UID e e-mail; adicionou `CredencialRepository` com busca por UID; incluiu consulta e gravação condicional após o cadastro no `AuthService` e configuração de conexão Atlas. | `32c3555` |
+
+O PR introduziu a base de persistência, mas não implementou o contrato completo de contas usado pelo login nem comprovou leitura/gravação real no Atlas. A correção posterior da inicialização e do isolamento local está descrita no [relatório de correção](CORRECAO-MONGO-LOCAL.md).
 
 ## 8. JWT, segurança e APIs de usuários
 
